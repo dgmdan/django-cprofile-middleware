@@ -1,34 +1,48 @@
 # django-cprofile-middleware
 
-[![pypi-version]][pypi]
+This middleware allows you to profile performance in Django applications.
 
-This is a simple profiling middleware for Django applications. I wrote it because I got tired of printing "start" "stop" "stop 2" in my programs to find the bottlenecks.
+Add ```?prof``` to your URL. Then instead of showing the requested page, Django will show the cProfile output.
 
-I found a simple example on @dcramer's [slideshare](http://www.slideshare.net/zeeg/django-con-high-performance-django-presentation) and modified it to support sorting.
+This will show a row for each method called, with the following stats:
+* number of times it was called (ncalls)
+* how much time was spent per call (percall)
+* how much time was spent total in that method (cumtime)
+* file and line number
+
+This is helpful in finding performance optimizations in your Django application.
+
+This is a fork of [this project](https://github.com/omarish/django-cprofile-middleware) with several changes:
+* Support for Django 2.1
+* Remove backwards compatibility with Django <= 1.10
+* Remove the ```DJANGO_CPROFILE_MIDDLEWARE_REQUIRE_STAFF``` setting
+* Always show the absolute file path rather than filename
 
 ## Installing
 
 ```bash
-$ pip install django-cprofile-middleware
+$ pip install -e git+https://github.com/dgmdan/django-cprofile-middleware.git@master#egg=django_cprofile_middleware
 ```
 
-Then add ```django_cprofile_middleware.middleware.ProfilerMiddleware``` to the end your ```MIDDLEWARE``` in settings.py. This option was called ```MIDDLEWARE_CLASSES``` in versions of Django before [1.10](https://docs.djangoproject.com/en/1.10/topics/http/middleware/). 
+Then add ```django_cprofile_middleware.middleware.ProfilerMiddleware``` to the end your ```MIDDLEWARE``` in settings.py.
 
 For example:
 
 ```
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'startup.do.work.FindProductMarketFitMiddleware',
     ...
     'django_cprofile_middleware.middleware.ProfilerMiddleware'
-)
+]
 ```
 
 ## Running & Sorting Results
 
-Once you've installed it, log in as a user who has staff privileges and add ```?prof``` to any URL to see the profiler's stats. For example to see profile stats for ```http://localhost:8000/foo/```, visit ```http://localhost:8000/foo/?prof```.
+Once you've installed it, add ```?prof``` to any URL to see the profiler's stats. For example to see profile stats for ```http://localhost:8000/foo/```, visit ```http://localhost:8000/foo/?prof```.
+
+Note that ```DEBUG``` settings must be set to ```True```.
 
 You can also pass some options:
 
@@ -37,11 +51,3 @@ You can also pass some options:
 **sort:** The field you'd like to sort results by. Default is ```time```. For all the options you can pass, see the [docs for pstats](http://docs.python.org/2/library/profile.html#pstats.Stats.sort_stats).
 
 **download:** Download profile file, that can be visualized in multiple viewers, e.g. [SnakeViz](https://github.com/jiffyclub/snakeviz/) or [RunSnakeRun](http://www.vrplumber.com/programming/runsnakerun/)
-
-## Enjoy!
-
-Email me with any questions: [omar.bohsali@gmail.com](omar.bohsali@gmail.com).
-
-
-[pypi]: https://pypi.org/project/django-cprofile-middleware/
-[pypi-version]: https://img.shields.io/pypi/v/django-cprofile-middleware.svg
