@@ -17,6 +17,7 @@ This is a fork of [this project](https://github.com/omarish/django-cprofile-midd
 * Remove backwards compatibility with Django <= 1.10
 * Remove the ```DJANGO_CPROFILE_MIDDLEWARE_REQUIRE_STAFF``` setting
 * Always show the absolute file path rather than filename
+* Make ```cumtime``` the default sort method
 
 ## Installing
 

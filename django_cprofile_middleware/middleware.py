@@ -65,7 +65,7 @@ class ProfilerMiddleware:
                 io = StringIO()
                 stats = pstats.Stats(profiler, stream=io)
 
-                stats.sort_stats(request.GET.get('sort', 'time'))
+                stats.sort_stats(request.GET.get('sort', 'cumtime'))
                 stats.print_stats(int(request.GET.get('count', 100)))
 
                 response = HttpResponse('<pre>%s</pre>' % io.getvalue())
