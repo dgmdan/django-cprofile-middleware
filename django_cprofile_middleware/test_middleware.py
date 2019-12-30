@@ -21,7 +21,7 @@ class MiddlewareTest(unittest.TestCase):
 
     def setUp(self):
         self.view = MiddlewareTest.SampleView()
-        self.middleware = middleware.ProfilerMiddleware()
+        self.middleware = middleware.ProfilerMiddleware(None)
         self.request = client.RequestFactory().get('/sample/?prof')
         self.default_response = http.HttpResponse('default response')
         self.override_settings = {
@@ -31,10 +31,8 @@ class MiddlewareTest(unittest.TestCase):
 
     def test_profile(self):
         with test.override_settings(**self.override_settings):
-            self.middleware.process_view(
-                self.request, self.view.get, (self.request,), {})
-            response = self.middleware.process_response(
-                self.request, self.default_response)
+            response = self.middleware.process_view(
+                self.request, self.view.get, (), {})
         self.assertTrue(response.content.startswith(self.profile_content))
         self.assertIn('function calls'.encode('utf-8'), response.content)
         self.assertEqual(response['Content-Type'], 'text/html; charset=utf-8')
@@ -42,58 +40,48 @@ class MiddlewareTest(unittest.TestCase):
     def test_download_profile(self):
         request = client.RequestFactory().get('/sample/?prof&download')
         with test.override_settings(**self.override_settings):
-            self.middleware.process_view(
-                request, self.view.get, (request,), {})
-            response = self.middleware.process_response(
-                request, self.default_response)
+            response = self.middleware.process_view(
+                request, self.view.get, (), {})
         self.assertEqual(response['Content-Type'], 'application/octet-stream')
 
     def test_get_param_required(self):
         request = client.RequestFactory().get('/sample/')
         with test.override_settings(**self.override_settings):
-            self.middleware.process_view(
-                request, self.view.get, (request,), {})
-            response = self.middleware.process_response(
-                request, self.default_response)
-        self.assertEqual(response.content, self.default_response.content)
+            response = self.middleware.process_view(
+                request, self.view.get, (), {})
+        self.assertIsNone(response)
 
     def test_debug_required(self):
+        request = client.RequestFactory().get('/sample/?prof')
         self.override_settings['DEBUG'] = False
         with test.override_settings(**self.override_settings):
-            self.middleware.process_view(
-                self.request, self.view.get, (self.request,), {})
-            response = self.middleware.process_response(
-                self.request, self.default_response)
-        self.assertEqual(response.content, self.default_response.content)
+            response = self.middleware.process_view(
+                request, self.view, (), {})
+        self.assertIsNone(response)
 
     def test_staff_setting_no_user(self):
         self.override_settings[
             'DJANGO_CPROFILE_MIDDLEWARE_REQUIRE_STAFF'] = True
+        self.request.user = None
         with test.override_settings(**self.override_settings):
-            with self.assertRaises(AttributeError):
-                self.middleware.process_view(
+            response = self.middleware.process_view(
                     self.request, self.view.get, (self.request,), {})
-                self.middleware.process_response(
-                    self.request, self.default_response)
+            self.assertIsNone(response)
 
     def test_staff_setting_non_staff_user(self):
         self.override_settings[
             'DJANGO_CPROFILE_MIDDLEWARE_REQUIRE_STAFF'] = True
         self.request.user = mock.MagicMock(is_staff=False)
         with test.override_settings(**self.override_settings):
-            self.middleware.process_view(
+            response = self.middleware.process_view(
                 self.request, self.view.get, (self.request,), {})
-            response = self.middleware.process_response(
-                self.request, self.default_response)
-        self.assertEqual(response.content, self.default_response.content)
+        self.assertIsNone(response)
 
     def test_staff_setting_staff_user(self):
         self.override_settings[
             'DJANGO_CPROFILE_MIDDLEWARE_REQUIRE_STAFF'] = True
         self.request.user = mock.MagicMock(is_staff=True)
         with test.override_settings(**self.override_settings):
-            self.middleware.process_view(
-                self.request, self.view.get, (self.request,), {})
-            response = self.middleware.process_response(
-                self.request, self.default_response)
+            response = self.middleware.process_view(
+                self.request, self.view.get, (), {})
         self.assertTrue(response.content.startswith(self.profile_content))

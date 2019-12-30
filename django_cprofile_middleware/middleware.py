@@ -9,17 +9,11 @@ try:
 except ImportError:
     from io import StringIO
 
-import django
 from django.conf import settings
 from django.http import HttpResponse
 
-if django.VERSION >= (1, 10):
-    from django.utils.deprecation import MiddlewareMixin
-else:
-    from django_cprofile_middleware.utils import MiddlewareMixin
 
-
-class ProfilerMiddleware(MiddlewareMixin):
+class ProfilerMiddleware:
     """
     Simple profile middleware to profile django views. To run it, add ?prof to
     the URL like this:
@@ -41,7 +35,14 @@ class ProfilerMiddleware(MiddlewareMixin):
     This is adapted from an example found here:
     http://www.slideshare.net/zeeg/django-con-high-performance-django-presentation.
     """
-    def can(self, request):
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        return response
+
+    def _enable_profile(self, request):
         requires_staff = getattr(
             settings, "DJANGO_CPROFILE_MIDDLEWARE_REQUIRE_STAFF", True)
 
@@ -50,25 +51,17 @@ class ProfilerMiddleware(MiddlewareMixin):
 
         return settings.DEBUG and 'prof' in request.GET
 
-    def process_view(self, request, callback, callback_args, callback_kwargs):
-        if self.can(request):
-            self.profiler = profile.Profile()
-            args = (request,) + callback_args
-            try:
-                return self.profiler.runcall(
-                    callback, *args, **callback_kwargs)
-            except Exception:
-                # we want the process_exception middleware to fire
-                # https://code.djangoproject.com/ticket/12250
-                return
-
-    def process_response(self, request, response):
-        if self.can(request):
-            self.profiler.create_stats()
+    def process_view(self, request, view, args, kwargs):
+        if self._enable_profile(request):
+            profiler = profile.Profile()
+            profiler.runcall(view, request, *args, **kwargs)
+            # TODO: call process_exception on exceptions on above line
+            # https://code.djangoproject.com/ticket/12250
+            profiler.create_stats()
             if 'download' in request.GET:
                 import marshal
 
-                output = marshal.dumps(self.profiler.stats)
+                output = marshal.dumps(profiler.stats)
                 response = HttpResponse(
                     output, content_type='application/octet-stream')
                 response['Content-Disposition'] = 'attachment;' \
@@ -76,10 +69,10 @@ class ProfilerMiddleware(MiddlewareMixin):
                 response['Content-Length'] = len(output)
             else:
                 io = StringIO()
-                stats = pstats.Stats(self.profiler, stream=io)
+                stats = pstats.Stats(profiler, stream=io)
 
                 stats.strip_dirs().sort_stats(request.GET.get('sort', 'time'))
                 stats.print_stats(int(request.GET.get('count', 100)))
 
                 response = HttpResponse('<pre>%s</pre>' % io.getvalue())
-        return response
+            return response
