@@ -43,12 +43,6 @@ class ProfilerMiddleware:
         return response
 
     def _enable_profile(self, request):
-        requires_staff = getattr(
-            settings, "DJANGO_CPROFILE_MIDDLEWARE_REQUIRE_STAFF", True)
-
-        if requires_staff and not (request.user and request.user.is_staff):
-            return False
-
         return settings.DEBUG and 'prof' in request.GET
 
     def process_view(self, request, view, args, kwargs):

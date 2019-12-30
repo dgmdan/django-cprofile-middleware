@@ -24,9 +24,7 @@ class MiddlewareTest(unittest.TestCase):
         self.middleware = middleware.ProfilerMiddleware(None)
         self.request = client.RequestFactory().get('/sample/?prof')
         self.default_response = http.HttpResponse('default response')
-        self.override_settings = {
-            'DEBUG': True,
-            'DJANGO_CPROFILE_MIDDLEWARE_REQUIRE_STAFF': False}
+        self.override_settings = {'DEBUG': True}
         self.profile_content = '<pre>'.encode('utf-8')
 
     def test_profile(self):
@@ -58,30 +56,3 @@ class MiddlewareTest(unittest.TestCase):
             response = self.middleware.process_view(
                 request, self.view, (), {})
         self.assertIsNone(response)
-
-    def test_staff_setting_no_user(self):
-        self.override_settings[
-            'DJANGO_CPROFILE_MIDDLEWARE_REQUIRE_STAFF'] = True
-        self.request.user = None
-        with test.override_settings(**self.override_settings):
-            response = self.middleware.process_view(
-                    self.request, self.view.get, (self.request,), {})
-            self.assertIsNone(response)
-
-    def test_staff_setting_non_staff_user(self):
-        self.override_settings[
-            'DJANGO_CPROFILE_MIDDLEWARE_REQUIRE_STAFF'] = True
-        self.request.user = mock.MagicMock(is_staff=False)
-        with test.override_settings(**self.override_settings):
-            response = self.middleware.process_view(
-                self.request, self.view.get, (self.request,), {})
-        self.assertIsNone(response)
-
-    def test_staff_setting_staff_user(self):
-        self.override_settings[
-            'DJANGO_CPROFILE_MIDDLEWARE_REQUIRE_STAFF'] = True
-        self.request.user = mock.MagicMock(is_staff=True)
-        with test.override_settings(**self.override_settings):
-            response = self.middleware.process_view(
-                self.request, self.view.get, (), {})
-        self.assertTrue(response.content.startswith(self.profile_content))
